@@ -30,6 +30,7 @@ local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 
+-- Visual Elements
 local circle = Drawing.new("Circle")
 circle.Color = Color3.fromRGB(105, 160, 225)
 circle.Thickness = 1
@@ -48,27 +49,82 @@ local dot = Drawing.new("Circle")
 dot.Color = Color3.fromRGB(105, 160, 225)
 dot.Thickness = 1
 dot.NumSides = 12
-dot.Radius = 3
-dot.Transparency = 0.1
+dot.Radius = 2
+dot.Transparency = 0
 dot.Visible = false
 dot.Filled = true
 
-local placemarker = Instance.new("Part", workspace)
-placemarker.Anchored = true
-placemarker.CanCollide = false
-placemarker.Size = Vector3.new(0.3, 0.3, 0.3)
-placemarker.Transparency = 1
-placemarker.Material = Enum.Material.Neon
+local highlight = Instance.new("Highlight")
+highlight.Adornee = nil
+highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+highlight.FillColor = Color3.fromRGB(105, 160, 225)
+highlight.FillTransparency = 0.5
+highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+highlight.OutlineTransparency = 0
+highlight.Parent = game:GetService("CoreGui")
 
-local billboard = Instance.new("BillboardGui", placemarker)
-billboard.Size = UDim2.new(2, 0, 2, 0)
-billboard.AlwaysOnTop = true
-local frame = Instance.new("Frame", billboard)
-frame.Size = UDim2.new(1, 0, 1, 0)
-frame.BackgroundColor3 = Color3.fromRGB(105, 160, 225)
-frame.BackgroundTransparency = 0.1
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(1, 1)
+-- Target GUI
+local targetFrame = Instance.new("ScreenGui", game:GetService("CoreGui"))
+targetFrame.Name = "AzuriteTargetGUI"
+targetFrame.Enabled = false
+
+local mainFrame = Instance.new("Frame", targetFrame)
+mainFrame.Size = UDim2.new(0, 250, 0, 80)
+mainFrame.Position = UDim2.new(0.5, -125, 1, -90)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.BorderSizePixel = 0
+
+local gradient = Instance.new("Frame", mainFrame)
+gradient.Size = UDim2.new(1, 0, 0, 3)
+gradient.Position = UDim2.new(0, 0, 0, 0)
+gradient.BackgroundColor3 = Color3.fromRGB(105, 160, 225)
+gradient.BorderSizePixel = 0
+
+local uigradient = Instance.new("UIGradient", gradient)
+uigradient.Rotation = 90
+uigradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(1, 1)
+})
+
+local avatar = Instance.new("ImageLabel", mainFrame)
+avatar.Size = UDim2.new(0, 60, 0, 60)
+avatar.Position = UDim2.new(0, 10, 0, 15)
+avatar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+avatar.BorderSizePixel = 0
+avatar.BackgroundTransparency = 0.5
+
+local healthBar = Instance.new("Frame", mainFrame)
+healthBar.Size = UDim2.new(0, 150, 0, 10)
+healthBar.Position = UDim2.new(0, 80, 0, 25)
+healthBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+healthBar.BorderSizePixel = 0
+
+local healthFill = Instance.new("Frame", healthBar)
+healthFill.Size = UDim2.new(1, 0, 1, 0)
+healthFill.BackgroundColor3 = Color3.fromRGB(105, 160, 225)
+healthFill.BorderSizePixel = 0
+
+local healthText = Instance.new("TextLabel", mainFrame)
+healthText.Size = UDim2.new(0, 150, 0, 20)
+healthText.Position = UDim2.new(0, 80, 0, 40)
+healthText.BackgroundTransparency = 1
+healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
+healthText.Text = "100% Health"
+healthText.Font = Enum.Font.Gotham
+healthText.TextSize = 14
+healthText.TextXAlignment = Enum.TextXAlignment.Left
+
+local toolText = Instance.new("TextLabel", mainFrame)
+toolText.Size = UDim2.new(0, 150, 0, 20)
+toolText.Position = UDim2.new(0, 80, 0, 60)
+toolText.BackgroundTransparency = 1
+toolText.TextColor3 = Color3.fromRGB(200, 200, 200)
+toolText.Text = "[Fist]"
+toolText.Font = Enum.Font.Gotham
+toolText.TextSize = 12
+toolText.TextXAlignment = Enum.TextXAlignment.Left
 
 local Tabs = {
     Main = Window:AddTab('Main'),
@@ -89,7 +145,9 @@ local Settings = {
         JumpHitpart = "HumanoidRootPart",
         ShowFOV = false,
         ShowDot = true,
-        ShowTracer = true
+        ShowTracer = true,
+        ShowStats = true,
+        ShowHighlight = true
     },
     CamLock = {
         Enabled = false,
@@ -112,6 +170,7 @@ local CamLockActive = false
 local Flying = false
 local FlyVelocity = Vector3.new()
 
+-- Silent Aim UI
 SilentAimGroup:AddToggle('SilentAimEnabled', {
     Text = 'Enabled',
     Default = Settings.SilentAim.Enabled,
@@ -120,13 +179,17 @@ SilentAimGroup:AddToggle('SilentAimEnabled', {
     end
 })
 
-SilentAimGroup:AddLabel('Keybind'):AddKeyPicker('SilentAimKeybind', {
+local SilentAimKeybind = SilentAimGroup:AddLabel('Keybind'):AddKeyPicker('SilentAimKeybind', {
     Default = Settings.SilentAim.Keybind,
     SyncToggleState = false,
     Mode = 'Toggle',
     Text = 'Silent Aim keybind',
     NoUI = false,
 })
+
+SilentAimKeybind:OnChanged(function()
+    Settings.SilentAim.Keybind = Options.SilentAimKeybind.Value
+end)
 
 SilentAimGroup:AddInput('PredictionInput', {
     Default = tostring(Settings.SilentAim.Prediction),
@@ -141,12 +204,12 @@ SilentAimGroup:AddInput('PredictionInput', {
 SilentAimGroup:AddSlider('JumpOffsetSlider', {
     Text = 'Jump Offset',
     Default = 0,
-    Min = -100,
-    Max = 100,
+    Min = -1,
+    Max = 1,
     Rounding = 2,
     Suffix = '',
     Callback = function(Value)
-        Settings.SilentAim.JumpOffset = Value / 100
+        Settings.SilentAim.JumpOffset = Value
     end
 })
 
@@ -197,6 +260,25 @@ SilentAimGroup:AddToggle('ShowTracerToggle', {
     end
 })
 
+SilentAimGroup:AddToggle('ShowStatsToggle', {
+    Text = 'Show Stats',
+    Default = Settings.SilentAim.ShowStats,
+    Callback = function(Value)
+        Settings.SilentAim.ShowStats = Value
+        targetFrame.Enabled = Value and TargetLocked
+    end
+})
+
+SilentAimGroup:AddToggle('ShowHighlightToggle', {
+    Text = 'Show Highlight',
+    Default = Settings.SilentAim.ShowHighlight,
+    Callback = function(Value)
+        Settings.SilentAim.ShowHighlight = Value
+        highlight.Enabled = Value
+    end
+})
+
+-- Cam Lock UI
 CamLockGroup:AddToggle('CamLockEnabled', {
     Text = 'Enabled',
     Default = Settings.CamLock.Enabled,
@@ -205,13 +287,17 @@ CamLockGroup:AddToggle('CamLockEnabled', {
     end
 })
 
-CamLockGroup:AddLabel('Keybind'):AddKeyPicker('CamLockKeybind', {
+local CamLockKeybind = CamLockGroup:AddLabel('Keybind'):AddKeyPicker('CamLockKeybind', {
     Default = Settings.CamLock.Keybind,
     SyncToggleState = false,
     Mode = 'Toggle',
     Text = 'Cam Lock keybind',
     NoUI = false,
 })
+
+CamLockKeybind:OnChanged(function()
+    Settings.CamLock.Keybind = Options.CamLockKeybind.Value
+end)
 
 CamLockGroup:AddInput('CamPredictionInput', {
     Default = tostring(Settings.CamLock.Prediction),
@@ -226,12 +312,12 @@ CamLockGroup:AddInput('CamPredictionInput', {
 CamLockGroup:AddSlider('CamJumpOffsetSlider', {
     Text = 'Jump Offset',
     Default = 0,
-    Min = -100,
-    Max = 100,
+    Min = -1,
+    Max = 1,
     Rounding = 2,
     Suffix = '',
     Callback = function(Value)
-        Settings.CamLock.JumpOffset = Value / 100
+        Settings.CamLock.JumpOffset = Value
     end
 })
 
@@ -245,27 +331,30 @@ CamLockGroup:AddDropdown('CamHitpartDropdown', {
     end
 })
 
+-- Fly UI
 FlyGroup:AddToggle('FlyEnabled', {
     Text = 'Enabled',
     Default = Settings.Fly.Enabled,
     Callback = function(Value)
         Settings.Fly.Enabled = Value
         Flying = Value
-        if not Value then
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new()
-            end
+        if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new()
         end
     end
 })
 
-FlyGroup:AddLabel('Keybind'):AddKeyPicker('FlyKeybind', {
+local FlyKeybind = FlyGroup:AddLabel('Keybind'):AddKeyPicker('FlyKeybind', {
     Default = Settings.Fly.Keybind,
     SyncToggleState = false,
     Mode = 'Toggle',
     Text = 'Fly keybind',
     NoUI = false,
 })
+
+FlyKeybind:OnChanged(function()
+    Settings.Fly.Keybind = Options.FlyKeybind.Value
+end)
 
 FlyGroup:AddSlider('FlySpeedSlider', {
     Text = 'Speed',
@@ -309,16 +398,42 @@ local function getHitPart(character, isJumping)
     end
 end
 
+local function updateTargetGUI()
+    if Target and Target.Character and Settings.SilentAim.ShowStats and TargetLocked then
+        targetFrame.Enabled = true
+        
+        local humanoid = Target.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local health = math.floor((humanoid.Health / humanoid.MaxHealth) * 100)
+            healthFill.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
+            healthText.Text = health.."% Health"
+        end
+        
+        local tool = Target.Character:FindFirstChildOfClass("Tool")
+        toolText.Text = tool and "["..tool.Name.."]" or "[Fist]"
+        
+        pcall(function()
+            avatar.Image = game:GetService("Players"):GetUserThumbnailAsync(Target.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+        end)
+    else
+        targetFrame.Enabled = false
+    end
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
     if input.KeyCode == Enum.KeyCode[Settings.SilentAim.Keybind] and Settings.SilentAim.Enabled then
         if TargetLocked then
             TargetLocked = false
+            highlight.Adornee = nil
         else
             Target = getClosestPlayerToCursor()
             if Target then
                 TargetLocked = true
+                if Settings.SilentAim.ShowHighlight then
+                    highlight.Adornee = Target.Character
+                end
             end
         end
     end
@@ -413,8 +528,6 @@ RunService.RenderStepped:Connect(function()
                 offset = Vector3.new(0, Settings.SilentAim.JumpOffset, 0)
             end
             
-            placemarker.CFrame = CFrame.new(hitpart.Position + (hitpart.Velocity * predictionValue) + offset)
-            
             if Settings.SilentAim.ShowTracer then
                 local screenPos = Camera:WorldToViewportPoint(hitpart.Position)
                 line.From = Vector2.new(Mouse.X, Mouse.Y + GuiService:GetGuiInset().Y)
@@ -425,11 +538,13 @@ RunService.RenderStepped:Connect(function()
                 local screenPos = Camera:WorldToViewportPoint(hitpart.Position)
                 dot.Position = Vector2.new(screenPos.X, screenPos.Y)
             end
+            
+            updateTargetGUI()
         end
     else
-        placemarker.CFrame = CFrame.new(0, 9999, 0)
         line.Visible = false
         dot.Visible = false
+        targetFrame.Enabled = false
     end
     
     if CamLockActive and CamLockTarget and CamLockTarget.Character then
